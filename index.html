@@ -180,6 +180,38 @@
     input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     textarea { resize: vertical; min-height: 52px; }
 
+    /* ── Label picker ── */
+    .label-picker { display: flex; gap: 8px; margin-bottom: 14px; }
+    .label-opt { flex: 1; position: relative; }
+    .label-opt input { position: absolute; opacity: 0; width: 100%; height: 100%; margin:0; cursor: pointer; }
+    .label-opt-card {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 9px 10px; text-align: center; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .label-opt-card i { font-size: 16px; display: block; margin-bottom: 4px; }
+    .label-opt-card .lo-title { font-size: 11px; font-weight: 600; color: var(--text); }
+    .label-opt input:checked + .label-opt-card { border-width: 1.5px; }
+    .label-opt[data-val="befriend"] input:checked + .label-opt-card { border-color: var(--brand); background: var(--brand-lt); }
+    .label-opt[data-val="befriend"] .label-opt-card i { color: var(--brand); }
+    .label-opt[data-val="monitor"] input:checked + .label-opt-card { border-color: var(--warn); background: var(--warn-lt); }
+    .label-opt[data-val="monitor"] .label-opt-card i { color: var(--warn); }
+    .label-opt[data-val="avoid"] input:checked + .label-opt-card { border-color: var(--danger); background: var(--danger-lt); }
+    .label-opt[data-val="avoid"] .label-opt-card i { color: var(--danger); }
+
+    .label-switch { display: flex; gap: 6px; margin-left: auto; }
+    .label-switch-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 10px; font-size: 11px; font-weight: 500;
+      border: 0.5px solid var(--border); border-radius: var(--radius-sm);
+      background: transparent; color: var(--muted);
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .label-switch-btn i { font-size: 13px; }
+    .label-switch-btn.sel-befriend { border-color: var(--brand); background: var(--brand-lt); color: var(--brand-dk); }
+    .label-switch-btn.sel-monitor  { border-color: var(--warn);  background: var(--warn-lt);  color: var(--warn-dk); }
+    .label-switch-btn.sel-avoid    { border-color: var(--danger);background: var(--danger-lt);color: var(--danger-dk); }
+
     /* ── People grid ── */
     .people-grid {
       display: grid;
@@ -393,7 +425,7 @@
   <div id="view-people">
     <div class="info-box">
       <i class="ti ti-info-circle" style="font-size:13px;vertical-align:-2px;margin-right:4px;"></i>
-      Log people whose behaviour impacts your wellbeing. Record specific incidents, choose a <strong>response strategy</strong>, and track your progress — objectively and without judgement.
+      Log the people who shape your wellbeing — the ones to <strong>befriend</strong>, the ones to <strong>monitor</strong>, and the ones to <strong>avoid</strong>. Track what's actually happening, and respond with intention.
     </div>
 
     <div class="section-head">
@@ -402,7 +434,7 @@
         <div class="section-sub">Tap a person to open their profile</div>
       </div>
       <button class="btn-primary" onclick="toggleAddForm()">
-        <i class="ti ti-plus"></i>Add perpetrator
+        <i class="ti ti-plus"></i>Add person
       </button>
     </div>
 
@@ -417,6 +449,8 @@
           <input type="text" id="new-rel" placeholder="e.g. colleague, family, neighbour" />
         </div>
       </div>
+      <label class="form-label">How do you see this relationship right now?</label>
+      <div class="label-picker" id="new-label-picker"></div>
       <div class="form-actions">
         <button class="btn-primary" onclick="addPerson()"><i class="ti ti-check"></i>Add</button>
         <button class="btn-ghost"   onclick="toggleAddForm()">Cancel</button>
@@ -512,6 +546,39 @@ const STRATEGIES = [
   { level:3, label:"Decisive",  text:"Remove contact entirely where circumstances allow." },
 ];
 
+// ── Connection labels (befriend / monitor / avoid) ──────────────────────────
+
+const LABELS = [
+  { val:"befriend", title:"Befriend",  desc:"Genuine, morally healthy — worth investing in", pill:"pill-green",  icon:"ti-heart-handshake" },
+  { val:"monitor",  title:"Monitor",   desc:"Unclear yet — watch the pattern before deciding", pill:"pill-amber",  icon:"ti-eye" },
+  { val:"avoid",    title:"Avoid",     desc:"Consistently toxic or unconstructive — protect your energy", pill:"pill-red",    icon:"ti-shield-x" },
+];
+function labelInfo(val) { return LABELS.find(l => l.val === val) || LABELS[1]; }
+
+const MOMENT_TYPES = [
+  { val:"supportive",  label:"Supportive",   color:"#1D9E75" },
+  { val:"honest",      label:"Honest",       color:"#378ADD" },
+  { val:"encouraging",label:"Encouraging",   color:"#7F77DD" },
+  { val:"fun",         label:"Fun / lighthearted", color:"#BA7517" },
+  { val:"reliable",    label:"Reliable",     color:"#888780" },
+  { val:"other",       label:"Other",        color:"#9a9a94" },
+];
+
+const CONNECTION_ACTIONS = [
+  { level:1, label:"Reach out",  text:"Initiate contact instead of waiting — send a message just to check in, no agenda." },
+  { level:1, label:"Reach out",  text:"Express specific appreciation for something they did or said recently." },
+  { level:1, label:"Reach out",  text:"Ask a genuine follow-up question about something they shared last time." },
+  { level:1, label:"Reach out",  text:"Suggest a low-pressure catch-up — coffee, a walk, a call." },
+  { level:2, label:"Deepen",     text:"Share something a little more honest or vulnerable than usual." },
+  { level:2, label:"Deepen",     text:"Offer help with something practical, unprompted." },
+  { level:2, label:"Deepen",     text:"Make a standing plan — recurring catch-up, not a one-off." },
+  { level:2, label:"Deepen",     text:"Celebrate a win of theirs, publicly or privately." },
+  { level:2, label:"Deepen",     text:"Ask what's actually going on for them, then really listen." },
+  { level:3, label:"Integrate",  text:"Introduce them to other good people in your life — widen the circle." },
+  { level:3, label:"Integrate",  text:"Make them a regular fixture — invite them into routines, not just events." },
+  { level:3, label:"Integrate",  text:"Be explicit: tell them you value the relationship and want to keep building it." },
+];
+
 let people = [];
 let nextId  = 1;
 let activePerson = null;
@@ -554,6 +621,14 @@ function behaviourLabel(type) {
   const bt = BEHAVIOUR_TYPES.find(b => b.val === type);
   return bt ? bt.label : "Other";
 }
+function momentColor(type) {
+  const mt = MOMENT_TYPES.find(m => m.val === type);
+  return mt ? mt.color : "#9a9a94";
+}
+function momentLabel(type) {
+  const mt = MOMENT_TYPES.find(m => m.val === type);
+  return mt ? mt.label : "Other";
+}
 function today() {
   return new Date().toLocaleDateString("en-AU", { day:"numeric", month:"short", year:"numeric" });
 }
@@ -576,23 +651,50 @@ function setView(v) {
 function toggleAddForm() {
   const f = document.getElementById("add-form");
   f.classList.toggle("open");
-  if (f.classList.contains("open")) document.getElementById("new-name").focus();
+  if (f.classList.contains("open")) {
+    renderLabelPicker();
+    document.getElementById("new-name").focus();
+  }
+}
+
+function renderLabelPicker() {
+  const el = document.getElementById("new-label-picker");
+  if (!el) return;
+  el.innerHTML = LABELS.map(l => `
+    <label class="label-opt" data-val="${l.val}">
+      <input type="radio" name="new-label" value="${l.val}"${l.val === "monitor" ? " checked" : ""} />
+      <div class="label-opt-card">
+        <i class="ti ${l.icon}"></i>
+        <div class="lo-title">${l.title}</div>
+      </div>
+    </label>`).join("");
 }
 
 function addPerson() {
-  const name = document.getElementById("new-name").value.trim();
-  const rel  = document.getElementById("new-rel").value.trim();
+  const name  = document.getElementById("new-name").value.trim();
+  const rel   = document.getElementById("new-rel").value.trim();
+  const label = document.querySelector('input[name="new-label"]:checked')?.value || "monitor";
   if (!name) { document.getElementById("new-name").focus(); return; }
-  people.push({ id: nextId++, name, rel: rel || "—", behaviours: [] });
+  people.push({ id: nextId++, name, rel: rel || "—", label, behaviours: [], moments: [] });
   document.getElementById("new-name").value = "";
   document.getElementById("new-rel").value  = "";
+  document.querySelectorAll('input[name="new-label"]').forEach(r => r.checked = r.value === "monitor");
   document.getElementById("add-form").classList.remove("open");
   saveData();
   renderPeople();
 }
 
+function setPersonLabel(pid, label) {
+  const p = people.find(x => x.id === pid);
+  if (!p) return;
+  p.label = label;
+  activeTab = label === "befriend" ? "moments" : "behaviours";
+  saveData();
+  renderPeople();
+}
+
 function removePerson(id) {
-  if (!confirm("Remove this person and all their logged behaviours?")) return;
+  if (!confirm("Remove this person and everything logged about them?")) return;
   people = people.filter(p => p.id !== id);
   if (activePerson === id) activePerson = null;
   saveData();
@@ -603,7 +705,6 @@ function removePerson(id) {
 
 function selectPerson(id) {
   activePerson = activePerson === id ? null : id;
-  activeTab = "behaviours";
   renderPeople();
 }
 
@@ -617,8 +718,12 @@ function renderPeople() {
     return;
   }
   grid.innerHTML = people.map(p => {
-    const bc = p.behaviours.length;
-    const pillCls = bc === 0 ? "pill-green" : bc < 3 ? "pill-amber" : "pill-red";
+    const lbl = labelInfo(p.label || "monitor");
+    const isBefriend = lbl.val === "befriend";
+    const count = isBefriend ? (p.moments || []).length : p.behaviours.length;
+    const countLabel = isBefriend
+      ? `${count} good moment${count !== 1 ? "s" : ""}`
+      : `${count} behaviour${count !== 1 ? "s" : ""} logged`;
     const isActive = activePerson === p.id;
     return `<div class="person-card${isActive ? " active" : ""}" onclick="selectPerson(${p.id})">
       <div class="p-top">
@@ -626,7 +731,8 @@ function renderPeople() {
         <div><div class="p-name">${p.name}</div><div class="p-rel">${p.rel}</div></div>
       </div>
       <div class="p-stats">
-        <span class="pill ${pillCls}">${bc} behaviour${bc !== 1 ? "s" : ""} logged</span>
+        <span class="pill ${lbl.pill}"><i class="ti ${lbl.icon}" style="font-size:10px;vertical-align:-1px;margin-right:3px;"></i>${lbl.title}</span>
+        <span class="pill pill-gray">${countLabel}</span>
       </div>
     </div>`;
   }).join("");
@@ -640,6 +746,17 @@ function renderDetail() {
   if (!activePerson) { el.innerHTML = ""; return; }
   const p = people.find(x => x.id === activePerson);
   if (!p) { el.innerHTML = ""; return; }
+  if (!p.label) p.label = "monitor";
+
+  const isBefriend = p.label === "befriend";
+  const tab1 = isBefriend
+    ? { key:"moments",    icon:"ti-sparkles", text:"Good moments" }
+    : { key:"behaviours", icon:"ti-notes",    text:"Behaviour log" };
+  const tab2 = isBefriend
+    ? { key:"connect",    icon:"ti-heart-handshake", text:"Build connection" }
+    : { key:"strategies", icon:"ti-route",           text:"My strategies" };
+
+  if (activeTab !== tab1.key && activeTab !== tab2.key) activeTab = tab1.key;
 
   el.innerHTML = `<div class="detail-panel">
     <div class="detail-header">
@@ -654,12 +771,17 @@ function renderDetail() {
         </button>
       </div>
     </div>
+    <div class="label-switch">
+      ${LABELS.map(l => `<button class="label-switch-btn${p.label===l.val?` sel-${l.val}`:""}" onclick="setPersonLabel(${p.id},'${l.val}')">
+        <i class="ti ${l.icon}"></i>${l.title}
+      </button>`).join("")}
+    </div>
     <div class="tabs">
-      <button class="tab-btn${activeTab === "behaviours" ? " active" : ""}" onclick="switchTab('behaviours',${p.id})">
-        <i class="ti ti-notes" style="font-size:13px;vertical-align:-2px;margin-right:4px;"></i>Behaviour log
+      <button class="tab-btn${activeTab === tab1.key ? " active" : ""}" onclick="switchTab('${tab1.key}',${p.id})">
+        <i class="ti ${tab1.icon}" style="font-size:13px;vertical-align:-2px;margin-right:4px;"></i>${tab1.text}
       </button>
-      <button class="tab-btn${activeTab === "strategies" ? " active" : ""}" onclick="switchTab('strategies',${p.id})">
-        <i class="ti ti-route" style="font-size:13px;vertical-align:-2px;margin-right:4px;"></i>My strategies
+      <button class="tab-btn${activeTab === tab2.key ? " active" : ""}" onclick="switchTab('${tab2.key}',${p.id})">
+        <i class="ti ${tab2.icon}" style="font-size:13px;vertical-align:-2px;margin-right:4px;"></i>${tab2.text}
       </button>
     </div>
     <div id="tab-content"></div>
@@ -670,13 +792,7 @@ function renderDetail() {
 function switchTab(tab, pid) {
   activeTab = tab;
   const p = people.find(x => x.id === pid);
-  document.querySelectorAll(".tab-btn").forEach(b => {
-    b.classList.toggle("active",
-      (tab === "behaviours" && b.textContent.includes("Behaviour")) ||
-      (tab === "strategies" && b.textContent.includes("strategies"))
-    );
-  });
-  renderTabContent(p);
+  renderDetail();
 }
 
 function renderTabContent(p) {
@@ -684,85 +800,95 @@ function renderTabContent(p) {
   if (!el) return;
 
   if (activeTab === "behaviours") {
-    const rows = p.behaviours.length
-      ? p.behaviours.map((b, i) => `
-        <div class="behaviour-row">
-          <div class="b-dot" style="background:${behaviourColor(b.type)};"></div>
-          <div class="b-body">
-            <div class="b-text">${b.text}</div>
-            <div class="b-meta">${b.date} &middot; ${behaviourLabel(b.type)}</div>
-          </div>
-          <button class="b-del" onclick="removeBehaviour(${p.id},${i})" aria-label="Remove entry">
-            <i class="ti ti-x"></i>
-          </button>
-        </div>`).join("")
-      : `<div class="empty-state" style="padding:20px 0;">
-          <i class="ti ti-clipboard-list" style="font-size:22px;margin-bottom:8px;"></i>
-          No behaviours logged yet.
-        </div>`;
-
-    const typeOptions = BEHAVIOUR_TYPES.map(bt =>
-      `<option value="${bt.val}">${bt.label}</option>`
-    ).join("");
-
-    el.innerHTML = `
-      ${rows}
-      <div class="log-add-row" style="margin-top:12px;">
-        <textarea id="b-text-${p.id}" placeholder="Describe the behaviour specifically…" style="min-height:38px;padding:8px 10px;font-size:12px;"></textarea>
-        <select id="b-type-${p.id}" style="font-size:12px;">${typeOptions}</select>
-        <button class="btn-primary" style="white-space:nowrap;" onclick="addBehaviour(${p.id})">
-          <i class="ti ti-plus"></i>Log
-        </button>
-      </div>`;
-
-  } else {
-    const items = STRATEGIES.map((s, i) => {
-      const key  = `${p.id}-${i}`;
-      const done = !!checkedStrategies[key];
-      const badgeCls = s.level === 1 ? "pill-green" : s.level === 2 ? "pill-amber" : "pill-red";
-      return `<div class="strategy-item">
-        <span class="pill ${badgeCls} strategy-badge">${s.label}</span>
-        <span class="strategy-text">${s.text}</span>
-        <button class="strategy-check${done ? " done" : ""}" onclick="toggleStrategy('${key}',this)" aria-label="Mark as tried">
-          <i class="ti ti-check"></i>
-        </button>
-      </div>`;
-    }).join("");
-    el.innerHTML = `
-      <div class="strategy-group">
-        <div class="strategy-group-label">Level 1 — Engage &amp; reflect</div>
-        ${STRATEGIES.filter(s=>s.level===1).map((_,i)=>items.split("</div>")[i*3]+"</div>"+items.split("</div>")[i*3+1]+"</div>"+items.split("</div>")[i*3+2]+"</div>").join("")}
-      </div>`;
-
-    // Simpler grouping approach
-    const byLevel = {1:[],2:[],3:[]};
-    STRATEGIES.forEach((s,i) => {
-      const key  = `${p.id}-${i}`;
-      const done = !!checkedStrategies[key];
-      const badgeCls = s.level === 1 ? "pill-green" : s.level === 2 ? "pill-amber" : "pill-red";
-      byLevel[s.level].push(`<div class="strategy-item">
-        <span class="pill ${badgeCls} strategy-badge">${s.label}</span>
-        <span class="strategy-text">${s.text}</span>
-        <button class="strategy-check${done?" done":""}" onclick="toggleStrategy('${key}',this)" aria-label="Mark as tried">
-          <i class="ti ti-check"></i>
-        </button>
-      </div>`);
+    renderLogTab(el, p, {
+      items: p.behaviours, types: BEHAVIOUR_TYPES, typeKey: "type",
+      colorFn: behaviourColor, labelFn: behaviourLabel,
+      emptyIcon: "ti-clipboard-list", emptyText: "No behaviours logged yet.",
+      placeholder: "Describe the behaviour specifically…",
+      addFn: "addBehaviour", removeFn: "removeBehaviour"
     });
-    const levelLabels = {1:"Level 1 — Engage &amp; reflect", 2:"Level 2 — Manage the dynamic", 3:"Level 3 — Protect &amp; distance"};
-    el.innerHTML = [1,2,3].map(lv => `
-      <div class="strategy-group">
-        <div class="strategy-group-label">${levelLabels[lv]}</div>
-        ${byLevel[lv].join("")}
-      </div>`).join("");
+
+  } else if (activeTab === "moments") {
+    renderLogTab(el, p, {
+      items: p.moments || [], types: MOMENT_TYPES, typeKey: "type",
+      colorFn: momentColor, labelFn: momentLabel,
+      emptyIcon: "ti-sparkles", emptyText: "No good moments logged yet — capture what they did right.",
+      placeholder: "Describe what they did or said…",
+      addFn: "addMoment", removeFn: "removeMoment"
+    });
+
+  } else if (activeTab === "strategies") {
+    renderLeveledList(el, p, STRATEGIES, "strategy",
+      {1:"Level 1 — Engage &amp; reflect", 2:"Level 2 — Manage the dynamic", 3:"Level 3 — Protect &amp; distance"});
+
+  } else if (activeTab === "connect") {
+    renderLeveledList(el, p, CONNECTION_ACTIONS, "connect",
+      {1:"Level 1 — Reach out", 2:"Level 2 — Deepen", 3:"Level 3 — Integrate"});
   }
 }
 
-// ── Behaviour CRUD ────────────────────────────────────────────────────────────
+// Shared renderer for the behaviour log / good moments tab
+function renderLogTab(el, p, cfg) {
+  const rows = cfg.items.length
+    ? cfg.items.map((b, i) => `
+      <div class="behaviour-row">
+        <div class="b-dot" style="background:${cfg.colorFn(b[cfg.typeKey])};"></div>
+        <div class="b-body">
+          <div class="b-text">${b.text}</div>
+          <div class="b-meta">${b.date} &middot; ${cfg.labelFn(b[cfg.typeKey])}</div>
+        </div>
+        <button class="b-del" onclick="${cfg.removeFn}(${p.id},${i})" aria-label="Remove entry">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>`).join("")
+    : `<div class="empty-state" style="padding:20px 0;">
+        <i class="ti ${cfg.emptyIcon}" style="font-size:22px;margin-bottom:8px;"></i>
+        ${cfg.emptyText}
+      </div>`;
+
+  const typeOptions = cfg.types.map(t =>
+    `<option value="${t.val}">${t.label}</option>`
+  ).join("");
+
+  el.innerHTML = `
+    ${rows}
+    <div class="log-add-row" style="margin-top:12px;">
+      <textarea id="log-text-${p.id}" placeholder="${cfg.placeholder}" style="min-height:38px;padding:8px 10px;font-size:12px;"></textarea>
+      <select id="log-type-${p.id}" style="font-size:12px;">${typeOptions}</select>
+      <button class="btn-primary" style="white-space:nowrap;" onclick="${cfg.addFn}(${p.id})">
+        <i class="ti ti-plus"></i>Log
+      </button>
+    </div>`;
+}
+
+// Shared renderer for the levelled action lists (strategies / connection actions)
+function renderLeveledList(el, p, list, keyPrefix, levelLabels) {
+  const byLevel = {1:[],2:[],3:[]};
+  list.forEach((s, i) => {
+    const key  = `${keyPrefix}-${p.id}-${i}`;
+    const done = !!checkedStrategies[key];
+    const badgeCls = s.level === 1 ? "pill-green" : s.level === 2 ? "pill-amber" : "pill-red";
+    byLevel[s.level].push(`<div class="strategy-item">
+      <span class="pill ${badgeCls} strategy-badge">${s.label}</span>
+      <span class="strategy-text">${s.text}</span>
+      <button class="strategy-check${done ? " done" : ""}" onclick="toggleStrategy('${key}',this)" aria-label="Mark as tried">
+        <i class="ti ti-check"></i>
+      </button>
+    </div>`);
+  });
+  el.innerHTML = [1,2,3].map(lv => `
+    <div class="strategy-group">
+      <div class="strategy-group-label">${levelLabels[lv]}</div>
+      ${byLevel[lv].join("")}
+    </div>`).join("");
+}
+
+// ── Behaviour / Moment CRUD ──────────────────────────────────────────────────
 
 function addBehaviour(pid) {
   const p    = people.find(x => x.id === pid);
-  const inp  = document.getElementById(`b-text-${pid}`);
-  const sel  = document.getElementById(`b-type-${pid}`);
+  const inp  = document.getElementById(`log-text-${pid}`);
+  const sel  = document.getElementById(`log-type-${pid}`);
   if (!inp || !inp.value.trim()) { inp && inp.focus(); return; }
   p.behaviours.push({ text: inp.value.trim(), type: sel.value, date: today() });
   inp.value = "";
@@ -773,6 +899,27 @@ function addBehaviour(pid) {
 function removeBehaviour(pid, idx) {
   const p = people.find(x => x.id === pid);
   p.behaviours.splice(idx, 1);
+  saveData();
+  renderTabContent(p);
+  renderPeople();
+}
+
+function addMoment(pid) {
+  const p   = people.find(x => x.id === pid);
+  const inp = document.getElementById(`log-text-${pid}`);
+  const sel = document.getElementById(`log-type-${pid}`);
+  if (!inp || !inp.value.trim()) { inp && inp.focus(); return; }
+  if (!p.moments) p.moments = [];
+  p.moments.push({ text: inp.value.trim(), type: sel.value, date: today() });
+  inp.value = "";
+  saveData();
+  renderPeople();
+}
+
+function removeMoment(pid, idx) {
+  const p = people.find(x => x.id === pid);
+  if (!p.moments) return;
+  p.moments.splice(idx, 1);
   saveData();
   renderTabContent(p);
   renderPeople();
@@ -897,8 +1044,11 @@ window.addPerson       = addPerson;
 window.removePerson    = removePerson;
 window.selectPerson    = selectPerson;
 window.switchTab       = switchTab;
+window.setPersonLabel  = setPersonLabel;
 window.addBehaviour    = addBehaviour;
 window.removeBehaviour = removeBehaviour;
+window.addMoment       = addMoment;
+window.removeMoment    = removeMoment;
 window.toggleStrategy  = toggleStrategy;
 window.emailData       = emailData;
 window.addNote         = addNote;
